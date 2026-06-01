@@ -116,28 +116,45 @@ const WriteArticle = () => {
       </form>
 
       {/* Right Column */}
-      
-   <div className='flex-1 min-w-[300px]'>
+  {/* Right Column */}
+<div className="flex-1 min-w-[300px]">
 
-  <div className='bg-white border border-gray-200 rounded-lg p-6 min-h-[300px]'>
+  <div className="bg-white border border-gray-200 rounded-lg p-6 min-h-[500px]">
 
-    <div className='flex items-center gap-2 mb-4'>
+    <div className="flex items-center gap-2 mb-4">
 
-      <Edit className='w-5 h-5 text-[#4A7AFF]' />
+      <Edit className="w-5 h-5 text-[#4A7AFF]" />
 
-      <h2 className='text-lg font-semibold'>
+      <h2 className="text-lg font-semibold text-slate-700">
         Generated Article
       </h2>
 
     </div>
 
-    <p className='text-gray-400 text-sm'>
-      Your AI-generated article will appear here...
-    </p>
+    <div className="border border-dashed border-gray-300 rounded-lg min-h-[400px] flex items-center justify-center p-6">
+
+      <div className="text-center">
+
+        <Edit className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+
+        <p className="text-gray-400 text-sm">
+          Your AI-generated article will appear here.
+        </p>
+
+        <p className="text-gray-300 text-xs mt-2">
+          Enter a topic, choose a length, and click
+          <span className="font-medium text-gray-500">
+            {" "}Generate Article
+          </span>
+        </p>
+
+      </div>
+
+    </div>
 
   </div>
 
-   </div>
+</div>
 
     </div>
   )
