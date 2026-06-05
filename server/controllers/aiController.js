@@ -14,10 +14,18 @@ const AI = new OpenAI({
 
 export const generateArticle = async (req, res) => {
     try {
-        const { userId } = req.auth();
+        const auth = req.auth();
+const userId = auth?.userId;
+
+if (!userId) {
+  return res.status(401).json({
+    success: false,
+    message: "Unauthorized"
+  });
+}
         const { prompt, length } = req.body;
-        const plan = req.plan;
-        const free_usage = req.free_usage;
+       const plan = req.plan || "free";
+const free_usage = req.free_usage || 0;
 
         if (plan !== "premium" && free_usage >= 100) {
             return res.json({
