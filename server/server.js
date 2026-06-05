@@ -11,26 +11,19 @@ const app = express();
 
 await connectCloudinary();
 
-// ✅ CORS (ONLY ONCE, CLEAN)
 app.use(cors({
   origin: "https://useai-sigma.vercel.app",
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  credentials: true
 }));
 
-// middlewares
 app.use(express.json());
 app.use(clerkMiddleware());
 
-// routes
 app.get('/', (req, res) => {
-  res.send('Server is Live');
+  res.send("Server is Live");
 });
 
 app.use('/api/ai', aiRouter);
 app.use('/api/user', userRouter);
-
-// ❌ IMPORTANT: NO app.listen()
 
 export default app;
