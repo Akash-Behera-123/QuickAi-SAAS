@@ -535,7 +535,6 @@ export const removeImageObject = async (req, res) => {
 import { PDFParse } from "pdf-parse";
 
 
-
 export const resumeReview = async (req, res) => {
   try {
     const { userId } = req.auth();
@@ -548,17 +547,22 @@ export const resumeReview = async (req, res) => {
       });
     }
 
-    // Read PDF
-const buffer = fs.readFileSync(resume.path);
+    // Read uploaded PDF
+    const buffer = fs.readFileSync(resume.path);
 
-// Extract text
-const parser = new PDFParse({ data: buffer });
+    // Extract text from PDF
+    const parser = new PDFParse({ data: buffer });
 
-const result = await parser.getText();
+    const result = await parser.getText();
 
-const text = result.text;
+    const text = result.text;
 
-await parser.destroy();
+    await parser.destroy();
+
+    // Delete uploaded file
+    if (fs.existsSync(resume.path)) {
+      fs.unlinkSync(resume.path);
+    }
 
     if (!text || text.trim().length === 0) {
       return res.json({
@@ -567,35 +571,54 @@ await parser.destroy();
       });
     }
 
-    const prompt = `
-Review this resume and provide:
+    console.log("Resume text length:", text.length);
 
-1. ATS Score (out of 100)
+    // Limit very large resumes
+    const resumeText = text.slice(0, 12000);
+
+    const prompt = `
+You are an ATS resume reviewer.
+
+Analyze the resume and provide:
+
+1. ATS Score (0-100)
 2. Strengths
 3. Weaknesses
 4. Missing Skills
-5. Improvement Suggestions
+5. Suggested Improvements
 6. Recommended Projects
 7. Final Verdict
 
 Resume:
 
-${text}
+${resumeText}
 `;
 
-    const response = await AI.chat.completions.create({
-      model: "gemini-2.5-flash",
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-    });
+    let response;
+
+    try {
+      response = await AI.chat.completions.create({
+        model: "gemini-2.5-flash",
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+      });
+    } catch (error) {
+      console.error("Gemini Error:", error);
+
+      return res.json({
+        success: false,
+        message:
+          "AI service temporarily unavailable. Please try again later.",
+      });
+    }
 
     const content = response.choices[0].message.content;
 
-    // Save in dashboard
+    // Save review in dashboard
     await sql`
       INSERT INTO creations(
         user_id,
