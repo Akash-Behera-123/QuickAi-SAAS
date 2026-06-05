@@ -11,14 +11,17 @@ const app = express();
 
 await connectCloudinary();
 
+// CORS
 app.use(cors({
   origin: "https://useai-sigma.vercel.app",
   credentials: true
 }));
 
+// Middleware
 app.use(express.json());
 app.use(clerkMiddleware());
 
+// Routes
 app.get('/', (req, res) => {
   res.send("Server is Live");
 });
@@ -26,4 +29,9 @@ app.get('/', (req, res) => {
 app.use('/api/ai', aiRouter);
 app.use('/api/user', userRouter);
 
-export default app;
+// 🔥 IMPORTANT FOR RENDER
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
