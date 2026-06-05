@@ -13,93 +13,119 @@ const AI = new OpenAI({
 });
 
 export const generateArticle = async (req, res) => {
-    try {
-        const auth = req.auth();
-const userId = auth?.userId;
+  try {
+    // ======================
+    // AUTH CHECK (SAFE)
+    // ======================
+    const auth = req.auth();
+    const userId = auth?.userId;
 
-if (!userId) {
-  return res.status(401).json({
-    success: false,
-    message: "Unauthorized"
-  });
-}
-        const { prompt, length } = req.body;
-       const plan = req.plan || "free";
-const free_usage = req.free_usage || 0;
-
-        if (plan !== "premium" && free_usage >= 100) {
-            return res.json({
-                success: false,
-                message: "Limit reached. Upgrade to continue."
-            });
-        }
-
-        // const response = await AI.chat.completions.create({
-        //     model: "gemini-2.5-flash",
-        //     messages: [
-        //         {
-        //             role: "user",
-        //             content: prompt,
-        //         },
-        //     ],
-        //     temperature: 0.7,
-        //     max_tokens: length,
-        // });
-        
-        const response = await AI.chat.completions.create({
-    model: "gemini-2.5-flash",
-    messages: [
-        {
-            role: "user",
-            content: `
-    ${prompt}
-
-    Requirements:
-    - Write approximately ${length} words.
-    - Include a title.
-    - Include an introduction.
-    - Include multiple headings and subheadings.
-    - Include detailed explanations and examples.
-    - Include a conclusion.
-    - Do not generate a short summary.
-    - Ensure the article is close to ${length} words.
-     `,
-        },
-    ],
-    temperature: 0.7,
-    max_tokens: Math.ceil(length * 2),
-    });
-        
-
-
-        const content = response.choices[0].message.content;
-
-        await sql`
-            INSERT INTO creations(user_id, prompt, content, type)
-            VALUES (${userId}, ${prompt}, ${content}, 'article')
-        `;
-
-        if (plan !== "premium") {
-            await clerkClient.users.updateUserMetadata(userId, {
-                privateMetadata: {
-                    free_usage: (free_usage || 0) + 1,
-                },
-            });
-        }
-
-        res.json({
-            success: true,
-            content,
-        });
-
-    } catch (error) {
-        console.log(error.message);
-
-        res.json({
-            success: false,
-            message: error.message,
-        });
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
+
+    // ======================
+    // BODY VALIDATION
+    // ======================
+    const { prompt, length } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({
+        success: false,
+        message: "Prompt is required",
+      });
+    }
+
+    const safeLength = Number(length) || 500;
+
+    // ======================
+    // GET USER DATA FROM DB
+    // ======================
+    const userData = await sql`
+      SELECT plan, free_usage
+      FROM users
+      WHERE user_id = ${userId}
+      LIMIT 1
+    `;
+
+    const plan = userData[0]?.plan || "free";
+    const free_usage = userData[0]?.free_usage || 0;
+
+    // ======================
+    // LIMIT CHECK
+    // ======================
+    if (plan !== "premium" && free_usage >= 100) {
+      return res.status(403).json({
+        success: false,
+        message: "Limit reached. Upgrade to continue.",
+      });
+    }
+
+    // ======================
+    // AI CALL
+    // ======================
+    const response = await AI.chat.completions.create({
+      model: "gemini-2.5-flash",
+      messages: [
+        {
+          role: "user",
+          content: `
+${prompt}
+
+Requirements:
+- Write approximately ${safeLength} words
+- Include title
+- Include introduction
+- Include headings & subheadings
+- Include examples
+- Include conclusion
+          `,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: Math.ceil(safeLength * 2),
+    });
+
+    const content = response.choices[0].message.content;
+
+    // ======================
+    // SAVE TO DATABASE
+    // ======================
+    await sql`
+      INSERT INTO creations(user_id, prompt, content, type)
+      VALUES (${userId}, ${prompt}, ${content}, 'article')
+    `;
+
+    // ======================
+    // UPDATE USAGE (DB FIXED)
+    // ======================
+    if (plan !== "premium") {
+      await sql`
+        UPDATE users
+        SET free_usage = free_usage + 1
+        WHERE user_id = ${userId}
+      `;
+    }
+
+    // ======================
+    // RESPONSE
+    // ======================
+    return res.json({
+      success: true,
+      content,
+    });
+
+  } catch (error) {
+    console.error("generateArticle error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };
 
 export const generateBlogTitle = async (req, res) => {
