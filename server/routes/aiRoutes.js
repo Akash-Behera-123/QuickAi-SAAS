@@ -4,9 +4,9 @@ import { auth } from "../middlewares/auth.js";
 import { upload } from "../configs/multer.js";
 
 const aiRouter = express.Router();
-console.log("AI ROUTES LOADED");
+console.log("🔥 AI ROUTES LOADED");
 
-aiRouter.post('/generate-article', generateArticle)
+aiRouter.post('/generate-article',auth,generateArticle)
 aiRouter.post('/generate-blog-title',auth,generateBlogTitle)
 aiRouter.post('/generate-image',auth,generateImage)
 aiRouter.post('/remove-image-background',upload.single('image'),auth,removeImageBackground)

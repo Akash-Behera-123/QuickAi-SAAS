@@ -8,6 +8,7 @@ import userRouter from './routes/userRoutes.js';
 import connectCloudinary from './configs/cloudinary.js';
 
 const app = express();
+console.log("🔥 SERVER STARTED"); 
 
 await connectCloudinary();
 
