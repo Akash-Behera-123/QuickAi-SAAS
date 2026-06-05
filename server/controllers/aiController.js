@@ -14,9 +14,6 @@ const AI = new OpenAI({
 
 export const generateArticle = async (req, res) => {
   try {
-    // ======================
-    // DEBUG 1
-    // ======================
     console.log("🔥 generateArticle HIT");
 
     // ======================
@@ -52,31 +49,53 @@ export const generateArticle = async (req, res) => {
     const safeLength = Number(length) || 500;
 
     // ======================
-    // DB QUERY (DEBUG WRAPPED)
+    // DB FETCH USER
     // ======================
+    console.log("🔍 FETCHING USER FROM DB...");
+
     let userData;
 
     try {
       userData = await sql`
-        SELECT plan, free_usage
+        SELECT *
         FROM users
         WHERE user_id = ${userId}
-        LIMIT 1
       `;
 
-      console.log("📦 USER DATA:", userData);
-
+      console.log("📦 DB RESULT:", userData);
     } catch (err) {
       console.error("❌ DB ERROR:", err);
 
       return res.status(500).json({
         success: false,
-        message: "Database error",
+        message: err.message,
       });
     }
 
-    const plan = userData[0]?.plan || "free";
-    const free_usage = userData[0]?.free_usage || 0;
+    // ======================
+    // IF USER NOT EXISTS → CREATE USER
+    // ======================
+    let user = userData?.[0];
+
+    if (!user) {
+      console.log("⚠️ USER NOT FOUND → CREATING NEW USER");
+
+      await sql`
+        INSERT INTO users (user_id, plan, free_usage)
+        VALUES (${userId}, 'free', 0)
+      `;
+
+      user = {
+        plan: "free",
+        free_usage: 0,
+      };
+    }
+
+    // ======================
+    // PLAN + USAGE
+    // ======================
+    const plan = user?.plan || "free";
+    const free_usage = user?.free_usage || 0;
 
     console.log("📊 PLAN:", plan);
     console.log("📊 FREE USAGE:", free_usage);
@@ -104,7 +123,7 @@ ${prompt}
 
 Requirements:
 - Write approximately ${safeLength} words
-- Include title, intro, headings, conclusion
+- Include title, introduction, headings, conclusion
           `,
         },
       ],
@@ -115,7 +134,7 @@ Requirements:
     const content = response.choices[0].message.content;
 
     // ======================
-    // SAVE TO DB
+    // SAVE CREATION
     // ======================
     await sql`
       INSERT INTO creations(user_id, prompt, content, type)
