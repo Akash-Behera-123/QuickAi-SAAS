@@ -464,7 +464,6 @@ export const removeImageObject = async (req, res) => {
 
 
 
-// import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
 
 
