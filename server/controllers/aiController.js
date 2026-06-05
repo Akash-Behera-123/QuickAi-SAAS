@@ -464,38 +464,138 @@ export const removeImageObject = async (req, res) => {
 
 
 
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+// import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+
+
+
+
+// export const resumeReview = async (req, res) => {
+//   try {
+//     const { userId } = req.auth()
+//     const resume = req.file
+
+//     if (!resume) {
+//       return res.json({ success: false, message: "No resume uploaded" })
+//     }
+
+//     const data = new Uint8Array(fs.readFileSync(resume.path))
+//     const pdf = await pdfjsLib.getDocument({ data }).promise
+
+//     let text = ""
+
+//     for (let i = 1; i <= pdf.numPages; i++) {
+//       const page = await pdf.getPage(i)
+//       const content = await page.getTextContent()
+//       text += content.items.map(item => item.str).join(" ") + "\n"
+//     }
+
+//     const prompt = `Review this resume:\n\n${text}`
+
+//     const response = await AI.chat.completions.create({
+//       model: "gemini-2.5-flash",
+//       messages: [{ role: "user", content: prompt }],
+//     })
+
+//     const content = response.choices[0].message.content
+
+//     // ✅ IMPORTANT: SAVE TO DB (THIS WAS MISSING)
+//     await sql`
+//       INSERT INTO creations(
+//         user_id,
+//         prompt,
+//         content,
+//         type,
+//         publish
+//       )
+//       VALUES(
+//         ${userId},
+//         'Resume Review',
+//         ${content},
+//         'resume',
+//         false
+//       )
+//     `
+
+//     return res.json({
+//       success: true,
+//       content
+//     })
+
+//   } catch (error) {
+//     console.error(error)
+//     return res.json({
+//       success: false,
+//       message: error.message
+//     })
+//   }
+// }
+
+
+
+import { PDFParse } from "pdf-parse";
+
+
 
 export const resumeReview = async (req, res) => {
   try {
-    const { userId } = req.auth()
-    const resume = req.file
+    const { userId } = req.auth();
+    const resume = req.file;
 
     if (!resume) {
-      return res.json({ success: false, message: "No resume uploaded" })
+      return res.json({
+        success: false,
+        message: "No resume uploaded",
+      });
     }
 
-    const data = new Uint8Array(fs.readFileSync(resume.path))
-    const pdf = await pdfjsLib.getDocument({ data }).promise
+    // Read PDF
+const buffer = fs.readFileSync(resume.path);
 
-    let text = ""
+// Extract text
+const parser = new PDFParse({ data: buffer });
 
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i)
-      const content = await page.getTextContent()
-      text += content.items.map(item => item.str).join(" ") + "\n"
+const result = await parser.getText();
+
+const text = result.text;
+
+await parser.destroy();
+
+    if (!text || text.trim().length === 0) {
+      return res.json({
+        success: false,
+        message: "Could not extract text from PDF",
+      });
     }
 
-    const prompt = `Review this resume:\n\n${text}`
+    const prompt = `
+Review this resume and provide:
+
+1. ATS Score (out of 100)
+2. Strengths
+3. Weaknesses
+4. Missing Skills
+5. Improvement Suggestions
+6. Recommended Projects
+7. Final Verdict
+
+Resume:
+
+${text}
+`;
 
     const response = await AI.chat.completions.create({
       model: "gemini-2.5-flash",
-      messages: [{ role: "user", content: prompt }],
-    })
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+    });
 
-    const content = response.choices[0].message.content
+    const content = response.choices[0].message.content;
 
-    // ✅ IMPORTANT: SAVE TO DB (THIS WAS MISSING)
+    // Save in dashboard
     await sql`
       INSERT INTO creations(
         user_id,
@@ -508,21 +608,21 @@ export const resumeReview = async (req, res) => {
         ${userId},
         'Resume Review',
         ${content},
-        'resume',
+        'resume-review',
         false
       )
-    `
+    `;
 
     return res.json({
       success: true,
-      content
-    })
-
+      content,
+    });
   } catch (error) {
-    console.error(error)
+    console.error("Resume Review Error:", error);
+
     return res.json({
       success: false,
-      message: error.message
-    })
+      message: error.message,
+    });
   }
-}
+};
