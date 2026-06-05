@@ -386,64 +386,78 @@ export const removeImageBackground = async (req, res) => {
 
 
 
-
-
 export const removeImageObject = async (req, res) => {
-    try {
-        const { userId } = req.auth();
-        const { object } = req.body;
-        const image = req.file;
-        const plan = req.plan;
+  try {
+    const { userId } = req.auth()
+    const { object } = req.body
+    const image = req.file
+    const plan = req.plan
 
-        if (plan !== "premium") {
-            return res.json({
-                success: false,
-                message: "This feature is only available for premium subscriptions"
-            });
-        }
-
-        if (!image) {
-            return res.json({
-                success: false,
-                message: "No image uploaded"
-            });
-        }
-
-        const { public_id } = await cloudinary.uploader.upload(image.path);
-
-        const imageUrl = cloudinary.url(public_id, {
-            transformation: [
-                {
-                   effect: "gen_remove"
-                }
-            ],
-            resource_type: "image"
-        });
-
-        await sql`
-            INSERT INTO creations(user_id, prompt, content, type)
-            VALUES (
-                ${userId},
-                ${`Removed ${object} from image`},
-                ${imageUrl},
-                'image'
-            )
-        `;
-
-        res.json({
-            success: true,
-            content: imageUrl
-        });
-
-    } catch (error) {
-        console.log(error.message);
-
-        res.json({
-            success: false,
-            message: error.message,
-        });
+    if (plan !== "premium") {
+      return res.json({
+        success: false,
+        message: "This feature is only available for premium subscriptions"
+      })
     }
-};
+
+    if (!image) {
+      return res.json({
+        success: false,
+        message: "No image uploaded"
+      })
+    }
+
+    if (!object) {
+      return res.json({
+        success: false,
+        message: "Please specify an object to remove"
+      })
+    }
+
+    // Upload image to Cloudinary
+    const uploadResult = await cloudinary.uploader.upload(image.path)
+
+    console.log("Uploaded Public ID:", uploadResult.public_id)
+
+    const public_id = uploadResult.public_id
+
+    // Generate transformed image URL
+    const imageUrl = cloudinary.url(public_id, {
+      transformation: [
+        {
+          effect: `gen_remove:prompt_${object}`
+        }
+      ],
+      resource_type: "image"
+    })
+
+    console.log("Generated URL:", imageUrl)
+
+    // Save creation
+    await sql`
+      INSERT INTO creations(user_id, prompt, content, type)
+      VALUES (
+        ${userId},
+        ${`Removed ${object} from image`},
+        ${imageUrl},
+        'image'
+      )
+    `
+
+    return res.json({
+      success: true,
+      content: imageUrl
+    })
+
+  } catch (error) {
+    console.error("Remove Object Error:", error)
+
+    return res.json({
+      success: false,
+      message: error.message
+    })
+  }
+}
 
 
 
@@ -453,37 +467,62 @@ export const removeImageObject = async (req, res) => {
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
 export const resumeReview = async (req, res) => {
-    try {
-        const resume = req.file;
+  try {
+    const { userId } = req.auth()
+    const resume = req.file
 
-        if (!resume) {
-            return res.json({ success: false, message: "No resume uploaded" });
-        }
-
-        const data = new Uint8Array(fs.readFileSync(resume.path));
-
-        const pdf = await pdfjsLib.getDocument({ data }).promise;
-
-        let text = "";
-
-        for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const content = await page.getTextContent();
-            text += content.items.map(item => item.str).join(" ") + "\n";
-        }
-
-        const prompt = `Review this resume:\n\n${text}`;
-
-        const response = await AI.chat.completions.create({
-            model: "gemini-2.5-flash",
-            messages: [{ role: "user", content: prompt }],
-        });
-
-        const content = response.choices[0].message.content;
-
-        res.json({ success: true, content });
-
-    } catch (error) {
-        res.json({ success: false, message: error.message });
+    if (!resume) {
+      return res.json({ success: false, message: "No resume uploaded" })
     }
-};
+
+    const data = new Uint8Array(fs.readFileSync(resume.path))
+    const pdf = await pdfjsLib.getDocument({ data }).promise
+
+    let text = ""
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i)
+      const content = await page.getTextContent()
+      text += content.items.map(item => item.str).join(" ") + "\n"
+    }
+
+    const prompt = `Review this resume:\n\n${text}`
+
+    const response = await AI.chat.completions.create({
+      model: "gemini-2.5-flash",
+      messages: [{ role: "user", content: prompt }],
+    })
+
+    const content = response.choices[0].message.content
+
+    // ✅ IMPORTANT: SAVE TO DB (THIS WAS MISSING)
+    await sql`
+      INSERT INTO creations(
+        user_id,
+        prompt,
+        content,
+        type,
+        publish
+      )
+      VALUES(
+        ${userId},
+        'Resume Review',
+        ${content},
+        'resume',
+        false
+      )
+    `
+
+    return res.json({
+      success: true,
+      content
+    })
+
+  } catch (error) {
+    console.error(error)
+    return res.json({
+      success: false,
+      message: error.message
+    })
+  }
+}

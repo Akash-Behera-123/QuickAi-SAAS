@@ -1,7 +1,5 @@
-import React, { useEffect, useState } from 'react'
-import axios from 'axios'
-import { useAuth, useClerk, useUser } from '@clerk/clerk-react'
-
+import React from 'react'
+import { useClerk, useUser } from '@clerk/clerk-react'
 import {
   Eraser,
   FileText,
@@ -17,74 +15,25 @@ import {
 import { NavLink } from 'react-router-dom'
 
 const navItems = [
-  {
-    to: '/ai',
-    label: 'Dashboard',
-    Icon: House,
-  },
-  {
-    to: '/ai/write-article',
-    label: 'Write Article',
-    Icon: SquarePen,
-  },
-  {
-    to: '/ai/blog-titles',
-    label: 'Blog Titles',
-    Icon: Hash,
-  },
-  {
-    to: '/ai/generate-images',
-    label: 'Generate Images',
-    Icon: Image,
-  },
-  {
-    to: '/ai/remove-background',
-    label: 'Remove Background',
-    Icon: Eraser,
-  },
-  {
-    to: '/ai/remove-object',
-    label: 'Remove Object',
-    Icon: Scissors,
-  },
-  {
-    to: '/ai/review-resume',
-    label: 'Review Resume',
-    Icon: FileText,
-  },
-  {
-    to: '/ai/community',
-    label: 'Community',
-    Icon: Users,
-  },
+  { to: '/ai', label: 'Dashboard', Icon: House },
+  { to: '/ai/write-article', label: 'Write Article', Icon: SquarePen },
+  { to: '/ai/blog-titles', label: 'Blog Titles', Icon: Hash },
+  { to: '/ai/generate-images', label: 'Generate Images', Icon: Image },
+  { to: '/ai/remove-background', label: 'Remove Background', Icon: Eraser },
+  { to: '/ai/remove-object', label: 'Remove Object', Icon: Scissors },
+  { to: '/ai/review-resume', label: 'Review Resume', Icon: FileText },
+  { to: '/ai/community', label: 'Community', Icon: Users },
 ]
 
 const Sidebar = ({ sidebar, setSidebar }) => {
   const { user } = useUser()
   const { signOut, openUserProfile } = useClerk()
-  const { getToken } = useAuth()
 
-  const [plan, setPlan] = useState('free')
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const { data } = await axios.get('/api/user/get-user-data', {
-          headers: {
-            Authorization: `Bearer ${await getToken()}`,
-          },
-        })
-
-        if (data.success) {
-          setPlan(data.plan)
-        }
-      } catch (error) {
-        console.log(error)
-      }
-    }
-
-    fetchUserData()
-  }, [])
+  // ✅ FIX: use Clerk directly (NO API)
+  const plan =
+    user?.publicMetadata?.plan?.toLowerCase() === 'premium'
+      ? 'Premium Plan'
+      : 'Free Plan'
 
   return (
     <div
@@ -99,25 +48,25 @@ const Sidebar = ({ sidebar, setSidebar }) => {
       transition-all duration-300 ease-in-out`}
     >
       {/* Top Section */}
-      <div className='my-7 w-full'>
+      <div className="my-7 w-full">
         {/* User Profile */}
         <div
           onClick={() => openUserProfile()}
-          className='flex flex-col items-center cursor-pointer'
+          className="flex flex-col items-center cursor-pointer"
         >
           <img
             src={user?.imageUrl}
-            alt='User Avatar'
-            className='w-16 h-16 rounded-full object-cover'
+            alt="User Avatar"
+            className="w-16 h-16 rounded-full object-cover"
           />
 
-          <h1 className='mt-2 text-center font-medium text-gray-700'>
+          <h1 className="mt-2 text-center font-medium text-gray-700">
             {user?.fullName}
           </h1>
         </div>
 
         {/* Navigation */}
-        <div className='mt-8 space-y-2 px-3'>
+        <div className="mt-8 space-y-2 px-3">
           {navItems.map(({ to, label, Icon }) => (
             <NavLink
               key={to}
@@ -150,33 +99,31 @@ const Sidebar = ({ sidebar, setSidebar }) => {
       </div>
 
       {/* Bottom Section */}
-      <div className='w-full border-t border-gray-200 p-4 px-7 flex items-center justify-between'>
+      <div className="w-full border-t border-gray-200 p-4 px-7 flex items-center justify-between">
         <div
           onClick={openUserProfile}
-          className='flex gap-2 items-center cursor-pointer'
+          className="flex gap-2 items-center cursor-pointer"
         >
           <img
             src={user?.imageUrl}
-            className='w-8 h-8 rounded-full object-cover'
-            alt='profile'
+            className="w-8 h-8 rounded-full object-cover"
+            alt="profile"
           />
 
           <div>
-            <h1 className='text-sm font-medium'>
+            <h1 className="text-sm font-medium">
               {user?.fullName}
             </h1>
 
-            <p className='text-xs text-gray-500'>
-              {plan === 'premium'
-                ? 'Premium Plan'
-                : 'Free Plan'}
+            <p className="text-xs text-gray-500">
+              {plan}
             </p>
           </div>
         </div>
 
         <LogOut
           onClick={() => signOut()}
-          className='w-5 text-gray-400 hover:text-gray-700 transition cursor-pointer'
+          className="w-5 text-gray-400 hover:text-gray-700 transition cursor-pointer"
         />
       </div>
     </div>
