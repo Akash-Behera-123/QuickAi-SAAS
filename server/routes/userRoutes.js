@@ -2,7 +2,8 @@ import express from "express";
 import {
     getPublishedCreations,
     getUserCreations,
-    toggleLikeCreation
+    toggleLikeCreation,
+    getUserData
 } from "../controllers/userController.js";
 import { auth } from "../middlewares/auth.js";
 
@@ -13,5 +14,7 @@ userRouter.get('/get-published-creations', auth, getPublishedCreations);
 
 // FIXED
 userRouter.post('/toggle-like-creation', auth, toggleLikeCreation);
+
+userRouter.get('/get-user-data', auth, getUserData);
 
 export default userRouter;

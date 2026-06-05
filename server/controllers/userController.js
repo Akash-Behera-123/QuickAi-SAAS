@@ -73,3 +73,18 @@ export const toggleLikeCreation = async (req, res) => {
         res.json({ success: false, message: error.message });
     }
 };
+
+export const getUserData = async (req, res) => {
+    try {
+        res.json({
+            success: true,
+            plan: req.plan,
+            free_usage: req.free_usage
+        });
+    } catch (error) {
+        res.json({
+            success: false,
+            message: error.message
+        });
+    }
+};

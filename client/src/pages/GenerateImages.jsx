@@ -1,5 +1,10 @@
 import { Image, Sparkles } from 'lucide-react'
 import React, { useState } from 'react'
+import axios from 'axios'
+import { useAuth } from '@clerk/clerk-react'
+import toast from 'react-hot-toast'
+
+axios.defaults.baseURL = import.meta.env.VITE_BASE_URL
 
 const GenerateImages = () => {
   const imageStyles = [
@@ -15,19 +20,49 @@ const GenerateImages = () => {
   const [selectedStyle, setSelectedStyle] = useState('Realistic')
   const [input, setInput] = useState('')
   const [publish, setPublish] = useState(false)
-  const [imageUrl, setImageUrl] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [content, setContent] = useState('')
+
+  const { getToken } = useAuth()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    console.log({
-      prompt: input,
-      style: selectedStyle,
-      publish,
-    })
+    try {
+      setLoading(true)
+      setContent('')
 
-    // Replace with your API response later
-    setImageUrl('https://via.placeholder.com/800x500?text=Generated+Image')
+      const prompt = `Generate an image of ${input} in the style ${selectedStyle}`
+
+      const { data } = await axios.post(
+        '/api/ai/generate-image',
+        { prompt, publish },
+        {
+          headers: {
+            Authorization: `Bearer ${await getToken()}`,
+          },
+        }
+      )
+
+      console.log('API Response:', data)
+
+      if (data.success) {
+        setContent(data.content)
+        toast.success('Image generated successfully!')
+      } else {
+        toast.error(data.message || 'Failed to generate image')
+      }
+    } catch (error) {
+      console.error(error)
+
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          'Something went wrong'
+      )
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -37,7 +72,6 @@ const GenerateImages = () => {
         onSubmit={handleSubmit}
         className="w-full max-w-lg p-4 bg-white rounded-lg border border-gray-200"
       >
-        {/* Heading */}
         <div className="flex items-center gap-2">
           <Sparkles className="w-6 text-[#00AD25]" />
           <h1 className="text-xl font-semibold">
@@ -45,7 +79,6 @@ const GenerateImages = () => {
           </h1>
         </div>
 
-        {/* Prompt */}
         <p className="mt-6 text-sm font-medium">
           Describe Your Image
         </p>
@@ -59,7 +92,6 @@ const GenerateImages = () => {
           required
         />
 
-        {/* Style Selection */}
         <p className="mt-4 text-sm font-medium">
           Style
         </p>
@@ -80,7 +112,6 @@ const GenerateImages = () => {
           ))}
         </div>
 
-        {/* Publish Toggle */}
         <div className="my-6 flex items-center gap-3">
           <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -100,13 +131,18 @@ const GenerateImages = () => {
           </p>
         </div>
 
-        {/* Submit Button */}
         <button
+          disabled={loading}
           type="submit"
-          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#00AD25] to-[#04FF50] text-white py-2.5 rounded-lg font-medium hover:opacity-90 transition"
+          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#00AD25] to-[#04FF50] text-white py-2.5 rounded-lg font-medium hover:opacity-90 transition disabled:opacity-70"
         >
-          <Image className="w-5 h-5" />
-          Generate Image
+          {loading ? (
+            <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+          ) : (
+            <Image className="w-5 h-5" />
+          )}
+
+          {loading ? 'Generating...' : 'Generate Image'}
         </button>
       </form>
 
@@ -120,11 +156,22 @@ const GenerateImages = () => {
             </h2>
           </div>
 
-          {imageUrl ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-[350px] border border-dashed border-gray-300 rounded-lg">
+              <div className="w-10 h-10 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="mt-4 text-gray-500">
+                Generating image...
+              </p>
+            </div>
+          ) : content ? (
             <img
-              src={imageUrl}
+              src={content}
               alt="Generated"
               className="w-full rounded-lg object-cover"
+              onError={() => {
+                toast.error('Failed to load image')
+                setContent('')
+              }}
             />
           ) : (
             <div className="flex items-center justify-center h-[350px] border border-dashed border-gray-300 rounded-lg">

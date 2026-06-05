@@ -27,17 +27,43 @@ export const generateArticle = async (req, res) => {
             });
         }
 
+        // const response = await AI.chat.completions.create({
+        //     model: "gemini-2.5-flash",
+        //     messages: [
+        //         {
+        //             role: "user",
+        //             content: prompt,
+        //         },
+        //     ],
+        //     temperature: 0.7,
+        //     max_tokens: length,
+        // });
+        
         const response = await AI.chat.completions.create({
-            model: "gemini-2.5-flash",
-            messages: [
-                {
-                    role: "user",
-                    content: prompt,
-                },
-            ],
-            temperature: 0.7,
-            max_tokens: length,
-        });
+    model: "gemini-2.5-flash",
+    messages: [
+        {
+            role: "user",
+            content: `
+    ${prompt}
+
+    Requirements:
+    - Write approximately ${length} words.
+    - Include a title.
+    - Include an introduction.
+    - Include multiple headings and subheadings.
+    - Include detailed explanations and examples.
+    - Include a conclusion.
+    - Do not generate a short summary.
+    - Ensure the article is close to ${length} words.
+     `,
+        },
+    ],
+    temperature: 0.7,
+    max_tokens: Math.ceil(length * 2),
+    });
+        
+
 
         const content = response.choices[0].message.content;
 
@@ -84,25 +110,43 @@ export const generateBlogTitle = async (req, res) => {
         }
 
         const response = await AI.chat.completions.create({
-            model: "gemini-2.5-flash",
-            messages: [
-                {
-                    role: "user",
-                    content: `
-    Generate 10 catchy, SEO-friendly blog titles for the topic: "${prompt}".
+    model: "gemini-2.5-flash",
+    messages: [
+        {
+            role: "user",
+           content: `
+Topic: ${prompt}
 
-      Requirements:
-    - Engaging and clickable
-    - SEO optimized
-    - Numbered list
-    - Maximum 15 words per title
-    - Return only the titles
-                    `
-                }
-            ],
-            temperature: 0.8,
-            max_tokens: 300,
-        });
+Generate EXACTLY 10 blog titles.
+
+IMPORTANT:
+- Return exactly 10 titles.
+- Each title must be on a new line.
+- Prefix each title with a number (1. to 10.).
+- No introductory text.
+- No explanations.
+- No notes.
+- No markdown formatting.
+- No blank lines.
+
+Example:
+
+1. First Title
+2. Second Title
+3. Third Title
+4. Fourth Title
+5. Fifth Title
+6. Sixth Title
+7. Seventh Title
+8. Eighth Title
+9. Ninth Title
+10. Tenth Title
+`
+        }
+    ],
+    temperature: 0.9,
+    max_tokens: 1000,
+});
 
         const content = response.choices[0].message.content;
 

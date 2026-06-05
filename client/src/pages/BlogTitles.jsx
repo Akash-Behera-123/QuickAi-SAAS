@@ -1,5 +1,11 @@
+import { useAuth } from '@clerk/clerk-react'
 import { Hash, Sparkles } from 'lucide-react'
 import React, { useState } from 'react'
+import toast from 'react-hot-toast'
+import Markdown from 'react-markdown'
+import axios from 'axios'
+
+axios.defaults.baseURL = import.meta.env.VITE_BASE_URL
 
 const BlogTitles = () => {
   const blogCategories = [
@@ -16,23 +22,42 @@ const BlogTitles = () => {
   const [selectedCategory, setSelectedCategory] = useState('General')
   const [input, setInput] = useState('')
   const [titles, setTitles] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [content, setContent] = useState('')
 
-  const handleSubmit = (e) => {
+  const { getToken } = useAuth()
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
 
-    console.log({
-      topic: input,
-      category: selectedCategory,
-    })
+    try {
+      setLoading(true)
 
-    // Replace this with your API response
-    setTitles([
-      `${input}: A Complete Guide`,
-      `10 Things You Should Know About ${input}`,
-      `Why ${input} Matters in 2026`,
-      `The Future of ${input}`,
-      `Everything About ${input}`,
-    ])
+      const prompt = `${input} (${selectedCategory})`
+
+      const { data } = await axios.post(
+        '/api/ai/generate-blog-title',
+        { prompt },
+        {
+          headers: {
+            Authorization: `Bearer ${await getToken()}`,
+          },
+        }
+      )
+
+      if (data.success) {
+        setContent(data.content)
+        setTitles([])
+      } else {
+        toast.error(data.message)
+      }
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || error.message
+      )
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -83,10 +108,16 @@ const BlogTitles = () => {
         </div>
 
         <button
+          disabled={loading}
           type="submit"
           className="mt-6 w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#C341F6] to-[#8E37EB] text-white py-2.5 rounded-lg font-medium hover:opacity-90 transition"
         >
-          <Hash className="w-5 h-5" />
+          {loading ? (
+            <span className="w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin"></span>
+          ) : (
+            <Hash className="w-5 h-5" />
+          )}
+
           Generate Title
         </button>
       </form>
@@ -101,21 +132,29 @@ const BlogTitles = () => {
             </h2>
           </div>
 
-          {titles.length > 0 ? (
-            <div className="space-y-3">
-              {titles.map((title, index) => (
-                <div
-                  key={index}
-                  className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition"
-                >
-                  {title}
-                </div>
-              ))}
-            </div>
+          {!content ? (
+            titles.length > 0 ? (
+              <div className="space-y-3">
+                {titles.map((title, index) => (
+                  <div
+                    key={index}
+                    className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition"
+                  >
+                    {title}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-400 text-sm">
+                Enter a topic and click "Generate Title" to get started.
+              </p>
+            )
           ) : (
-            <p className="text-gray-400 text-sm">
-              Enter a topic and click "Generate Title" to get started.
-            </p>
+            <div className="mt-3 h-full overflow-y-scroll text-sm text-slate-600">
+              <div className="reset-tw prose max-w-none">
+                <Markdown>{content}</Markdown>
+              </div>
+            </div>
           )}
         </div>
       </div>
