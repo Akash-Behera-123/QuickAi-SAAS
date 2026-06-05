@@ -15,10 +15,17 @@ const AI = new OpenAI({
 export const generateArticle = async (req, res) => {
   try {
     // ======================
-    // AUTH CHECK (SAFE)
+    // DEBUG 1
+    // ======================
+    console.log("🔥 generateArticle HIT");
+
+    // ======================
+    // AUTH
     // ======================
     const auth = req.auth();
     const userId = auth?.userId;
+
+    console.log("👤 USER ID:", userId);
 
     if (!userId) {
       return res.status(401).json({
@@ -28,9 +35,12 @@ export const generateArticle = async (req, res) => {
     }
 
     // ======================
-    // BODY VALIDATION
+    // BODY
     // ======================
     const { prompt, length } = req.body;
+
+    console.log("📝 PROMPT:", prompt);
+    console.log("📏 LENGTH:", length);
 
     if (!prompt) {
       return res.status(400).json({
@@ -42,17 +52,34 @@ export const generateArticle = async (req, res) => {
     const safeLength = Number(length) || 500;
 
     // ======================
-    // GET USER DATA FROM DB
+    // DB QUERY (DEBUG WRAPPED)
     // ======================
-    const userData = await sql`
-      SELECT plan, free_usage
-      FROM users
-      WHERE user_id = ${userId}
-      LIMIT 1
-    `;
+    let userData;
+
+    try {
+      userData = await sql`
+        SELECT plan, free_usage
+        FROM users
+        WHERE user_id = ${userId}
+        LIMIT 1
+      `;
+
+      console.log("📦 USER DATA:", userData);
+
+    } catch (err) {
+      console.error("❌ DB ERROR:", err);
+
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+      });
+    }
 
     const plan = userData[0]?.plan || "free";
     const free_usage = userData[0]?.free_usage || 0;
+
+    console.log("📊 PLAN:", plan);
+    console.log("📊 FREE USAGE:", free_usage);
 
     // ======================
     // LIMIT CHECK
@@ -77,11 +104,7 @@ ${prompt}
 
 Requirements:
 - Write approximately ${safeLength} words
-- Include title
-- Include introduction
-- Include headings & subheadings
-- Include examples
-- Include conclusion
+- Include title, intro, headings, conclusion
           `,
         },
       ],
@@ -92,7 +115,7 @@ Requirements:
     const content = response.choices[0].message.content;
 
     // ======================
-    // SAVE TO DATABASE
+    // SAVE TO DB
     // ======================
     await sql`
       INSERT INTO creations(user_id, prompt, content, type)
@@ -100,15 +123,15 @@ Requirements:
     `;
 
     // ======================
-    // UPDATE USAGE (DB FIXED)
+    // UPDATE USAGE
     // ======================
-    if (plan !== "premium") {
-      await sql`
-        UPDATE users
-        SET free_usage = free_usage + 1
-        WHERE user_id = ${userId}
-      `;
-    }
+    await sql`
+      UPDATE users
+      SET free_usage = free_usage + 1
+      WHERE user_id = ${userId}
+    `;
+
+    console.log("✅ ARTICLE GENERATED SUCCESSFULLY");
 
     // ======================
     // RESPONSE
@@ -119,7 +142,7 @@ Requirements:
     });
 
   } catch (error) {
-    console.error("generateArticle error:", error);
+    console.error("🔥 generateArticle ERROR:", error);
 
     return res.status(500).json({
       success: false,
