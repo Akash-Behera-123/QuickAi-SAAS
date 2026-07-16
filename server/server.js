@@ -13,10 +13,20 @@ console.log("🔥 SERVER STARTED");
 await connectCloudinary();
 
 // CORS
-app.use(cors({
+const corsOptions = {
   origin: "https://useai-sigma.vercel.app",
-  credentials: true
-}));
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization"
+  ]
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options(/.*/, cors(corsOptions));
 
 // Middleware
 app.use(express.json());

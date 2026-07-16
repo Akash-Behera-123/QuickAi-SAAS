@@ -1,29 +1,28 @@
-
-
-
-//Middleware to check userId and hasPremiumPlan
-
 import { clerkClient } from "@clerk/express";
 
 export const auth = async (req, res, next) => {
+  // ✅ Allow browser preflight requests
+  if (req.method === "OPTIONS") {
+    return next();
+  }
+
   try {
-    const { userId, has } = req.auth()
+    const { userId, has } = req.auth();
 
     if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Unauthorized",
-      })
+      });
     }
 
-    const hasPremiumPlan = await has({ plan: "premium" })
-    const user = await clerkClient.users.getUser(userId)
+    const hasPremiumPlan = await has({ plan: "premium" });
+    const user = await clerkClient.users.getUser(userId);
 
     if (!hasPremiumPlan) {
-      req.free_usage = user.privateMetadata.free_usage || 0
-      req.plan = "free"
+      req.free_usage = user.privateMetadata.free_usage || 0;
+      req.plan = "free";
     } else {
-      // RESET USAGE
       await clerkClient.users.updateUserMetadata(userId, {
         privateMetadata: {
           ...user.privateMetadata,
@@ -31,19 +30,19 @@ export const auth = async (req, res, next) => {
         },
         publicMetadata: {
           ...user.publicMetadata,
-          plan: "Premium"   // ✅ THIS IS THE MISSING PART
-        }
-      })
+          plan: "Premium",
+        },
+      });
 
-      req.free_usage = 0
-      req.plan = "premium"
+      req.free_usage = 0;
+      req.plan = "premium";
     }
 
-    next()
+    next();
   } catch (error) {
     res.status(500).json({
       success: false,
       message: error.message,
-    })
+    });
   }
-}
+};
