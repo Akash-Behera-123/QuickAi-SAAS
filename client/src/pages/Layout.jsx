@@ -1,75 +1,83 @@
-import { Menu, X } from 'lucide-react'
-import React, { useState } from 'react'
-import { Outlet, useNavigate } from 'react-router-dom'
-import { assets } from '../assets/assets'
-import Sidebar from '../components/Sidebar'
-import {SignIn, useUser } from '@clerk/clerk-react'
+import { Menu, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
+import { assets } from "../assets/assets";
+import Sidebar from "../components/Sidebar";
+import { SignIn, useUser } from "@clerk/clerk-react";
 
 const Layout = () => {
+  const navigate = useNavigate();
+  const { user } = useUser();
 
-  const navigate = useNavigate()
+  // Sidebar open on desktop, closed on mobile
+  const [sidebar, setSidebar] = useState(window.innerWidth >= 768);
 
-  const [sidebar, setSidebar] = useState(false)
+  // Automatically handle resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setSidebar(true);
+      } else {
+        setSidebar(false);
+      }
+    };
 
-  const {user} = useUser()
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   return user ? (
-
-    <div className='flex flex-col items-start justify-start h-screen'>
-
+    <div className="flex flex-col h-screen overflow-hidden">
       {/* Navbar */}
-      <nav className='w-full px-8 min-h-14 flex items-center justify-between border-b border-gray-200'>
-
+      <nav className="w-full h-14 px-6 flex items-center justify-between border-b border-gray-200 bg-white relative z-[60]">
         <img
           src={assets.logo}
           alt="logo"
-          onClick={() => navigate('/')}
-          className='cursor-pointer w-32'
+          onClick={() => navigate("/")}
+          className="cursor-pointer w-32"
         />
 
-        {
-          sidebar ? (
-
-            <X
-              onClick={() => setSidebar(false)}
-              className='w-6 h-6 text-gray-600 sm:hidden cursor-pointer'
-            />
-
+        {/* Mobile Menu Button */}
+        <button
+          onClick={() => setSidebar(!sidebar)}
+          className="md:hidden"
+        >
+          {sidebar ? (
+            <X className="w-6 h-6 text-gray-700" />
           ) : (
-
-            <Menu
-              onClick={() => setSidebar(true)}
-              className='w-6 h-6 text-gray-600 sm:hidden cursor-pointer'
-            />
-
-          )
-        }
-
+            <Menu className="w-6 h-6 text-gray-700" />
+          )}
+        </button>
       </nav>
 
-      {/* Main Layout */}
-      <div className='flex-1 w-full flex h-[calc(100vh-64px)]'>
-
+      {/* Main */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
         <Sidebar
           sidebar={sidebar}
           setSidebar={setSidebar}
         />
 
-        {/* Page Content */}
-        <div className='flex-1 bg-[#F4F7FB]'>
+        {/* Overlay */}
+        {sidebar && (
+          <div
+            className="fixed inset-0 bg-black/40 z-40 md:hidden"
+            onClick={() => setSidebar(false)}
+          />
+        )}
 
+        {/* Page */}
+        <main className="flex-1 overflow-y-auto bg-[#F4F7FB]">
           <Outlet />
-
-        </div>
-
+        </main>
       </div>
-
     </div>
-  ): (
-    <div className='flex items-center justify-center h-screen'>
-       <SignIn/>
+  ) : (
+    <div className="flex items-center justify-center h-screen">
+      <SignIn />
     </div>
-  )
-}
+  );
+};
 
-export default Layout
+export default Layout;
