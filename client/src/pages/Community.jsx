@@ -14,46 +14,36 @@ const Community = () => {
   const { getToken } = useAuth()
 
   const fetchCreations = async () => {
-  try {
-    setLoading(true)
+    try {
+      setLoading(true)
 
-    const token = await getToken()
+      const token = await getToken()
 
-    const { data } = await axios.get(
-      '/api/user/get-published-creations',
-      {
-        headers: {
-          Authorization: `Bearer ${token}`
+      const { data } = await axios.get(
+        '/api/user/get-published-creations',
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         }
+      )
+
+      if (data.success) {
+        setCreations(data.creations || data.creation || [])
+      } else {
+        toast.error(data.message)
       }
-    )
-
-    // 👇 DEBUG
-    console.log("========== COMMUNITY API ==========");
-    console.log("Full Response:", data);
-    console.log("Success:", data.success);
-    console.log("Creations:", data.creations);
-    console.log("Total Creations:", data.creations?.length);
-    console.log("===================================");
-
-    if (data.success) {
-      setCreations(data.creations || [])
-    } else {
-      toast.error(data.message)
+    } catch (error) {
+      console.error(error)
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          'Failed to fetch creations'
+      )
+    } finally {
+      setLoading(false)
     }
-
-  } catch (error) {
-    console.error("Community Error:", error)
-
-    toast.error(
-      error.response?.data?.message ||
-      error.message ||
-      "Failed to fetch creations"
-    )
-  } finally {
-    setLoading(false)
   }
-}
 
   const imageLikeToggle = async (id) => {
     try {
