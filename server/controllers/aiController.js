@@ -364,103 +364,6 @@ export const removeImageBackground = async (req, res) => {
 
 
 
-// export const removeImageBackground = async (req, res) => {
-//     try {
-//         const { userId } = req.auth();
-//         const {image} = req.file;
-//         const plan = req.plan;
-
-//         if (plan !== "premium") {
-//             return res.json({
-//                 success: false,
-//                 message: "This feature is only available for premium subscriptions"
-//             });
-//         }
-        
-//         const {secure_url}=await cloudinary.uploader.upload(image.path,{
-//             transformation: [
-//                 {
-//                     effect: "background_removal",
-//                     background_removal:'remove_the_background'
-//                 }
-//             ]
-//         })
-        
-
-//         await sql`
-//             INSERT INTO creations(user_id, prompt, content, type)
-//             VALUES (${userId},'Remove background from image', ${secure_url}, 'image')
-//         `;
-
-
-//         res.json({
-//             success: true,
-//             content: secure_url
-//         });
-
-//     } catch (error) {
-//         console.log(error.message);
-
-//         res.json({
-//             success: false,
-//             message: error.message,
-//         });
-//     }
-// };
-
-
-
-
-
-
-
-
-// export const removeImageObject = async (req, res) => {
-//     try {
-//         const { userId } = req.auth();
-//         const { object } = req.body;
-//         const {image} = req.file;
-//         const plan = req.plan;
-
-//         if (plan !== "premium") {
-//             return res.json({
-//                 success: false,
-//                 message: "This feature is only available for premium subscriptions"
-//             });
-//         }
-        
-//         const {public_id}=await cloudinary.uploader.upload(image.path)
-
-//         const imageUrl = cloudinary.url(public_id,{
-//             transformation:[{effect: `gen_remove:${object}`}],
-//             resource_type:'image'
-//         })
-        
-
-//         await sql`
-//             INSERT INTO creations(user_id, prompt, content, type)
-//             VALUES (${userId},${`Removed ${object} from image`}, ${imageUrl}, 'image')
-//         `;
-
-
-//         res.json({
-//             success: true,
-//             content: imageUrl
-//         });
-
-//     } catch (error) {
-//         console.log(error.message);
-
-//         res.json({
-//             success: false,
-//             message: error.message,
-//         });
-//     }
-// };
-
-
-
-
 export const removeImageObject = async (req, res) => {
   try {
     const { userId } = req.auth()
@@ -539,71 +442,6 @@ export const removeImageObject = async (req, res) => {
 
 
 
-
-
-
-
-// export const resumeReview = async (req, res) => {
-//   try {
-//     const { userId } = req.auth()
-//     const resume = req.file
-
-//     if (!resume) {
-//       return res.json({ success: false, message: "No resume uploaded" })
-//     }
-
-//     const data = new Uint8Array(fs.readFileSync(resume.path))
-//     const pdf = await pdfjsLib.getDocument({ data }).promise
-
-//     let text = ""
-
-//     for (let i = 1; i <= pdf.numPages; i++) {
-//       const page = await pdf.getPage(i)
-//       const content = await page.getTextContent()
-//       text += content.items.map(item => item.str).join(" ") + "\n"
-//     }
-
-//     const prompt = `Review this resume:\n\n${text}`
-
-//     const response = await AI.chat.completions.create({
-//       model: "gemini-2.5-flash",
-//       messages: [{ role: "user", content: prompt }],
-//     })
-
-//     const content = response.choices[0].message.content
-
-//     // ✅ IMPORTANT: SAVE TO DB (THIS WAS MISSING)
-//     await sql`
-//       INSERT INTO creations(
-//         user_id,
-//         prompt,
-//         content,
-//         type,
-//         publish
-//       )
-//       VALUES(
-//         ${userId},
-//         'Resume Review',
-//         ${content},
-//         'resume',
-//         false
-//       )
-//     `
-
-//     return res.json({
-//       success: true,
-//       content
-//     })
-
-//   } catch (error) {
-//     console.error(error)
-//     return res.json({
-//       success: false,
-//       message: error.message
-//     })
-//   }
-// }
-
 export const resumeReview = async (req, res) => {
   try {
     console.log("RESUME ROUTE HIT");
@@ -672,6 +510,68 @@ ${resumeText}
     console.error(error);
 
     return res.json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+
+
+
+export const chatWithAI = async (req, res) => {
+  try {
+    const { userId } = req.auth();
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const { message } = req.body;
+
+    if (!message || message.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Message is required",
+      });
+    }
+
+    const response = await AI.chat.completions.create({
+      model: "gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: `
+You are QuickAI Assistant.
+
+You are friendly, professional and helpful.
+
+- Answer clearly.
+- Use markdown whenever appropriate.
+- If asked coding questions, provide code blocks.
+- Keep answers concise unless the user asks for detailed explanations.
+          `,
+        },
+        {
+          role: "user",
+          content: message,
+        },
+      ],
+    });
+
+    return res.json({
+  success: true,
+  reply: response.choices[0].message.content,
+});
+
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
       success: false,
       message: error.message,
     });

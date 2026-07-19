@@ -14,6 +14,7 @@ import Community from './pages/Community'
 import { useAuth } from '@clerk/clerk-react'
 import { useEffect } from 'react'
 import {Toaster} from 'react-hot-toast'
+import AiAssistant from "./pages/AiAssistant";
 
 const App = () => {
   return (
@@ -24,6 +25,7 @@ const App = () => {
 
         <Route path='/ai' element={<Layout />}>
           <Route index element={<Dashboard />} />
+          <Route path="assistant" element={<AiAssistant />} />
           <Route path='write-article' element={<WriteArticle />} />
           <Route path='blog-titles' element={<BlogTitles />} />
           <Route path='generate-images' element={<GenerateImages />} />
